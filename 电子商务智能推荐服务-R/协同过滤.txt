@@ -1,0 +1,45 @@
+setwd("E:/Data/示例程序")
+
+require(plyr) 
+# 读入ask类型的数据,并删选用户与项目属性
+ask_data <- read.csv(file = "./data/ask02.csv", header = T, stringsAsFactors = F)  
+askitem <- ask_data[1:50, c(1, 2)]
+
+# 将ask数据去重处理
+item_ask <- ddply(askitem, .(realIP,FULLURL), tail, n = 1)
+
+
+require(recommenderlab)
+# 将数据转换为0-1二元型数据，即模型的输入数据集
+ask <- as(item_ask, "binaryRatingMatrix") 
+as(ask, "matrix")[1:3, 1:5]  # 显示部分网站的用户详情
+ask_01 <- as(ask, "matrix")
+write.csv(ask_01, "./ask.csv")  # 导出二元型矩阵
+
+# 方法二
+rating <- ask@data
+as(rating, "list")
+
+
+# 采用基于物品的协同过滤算法进行模型数据进行建模，形成模型
+ask_re <- Recommender(ask, method = "IBCF")
+
+ask_re@method
+ask_re@model$alpha
+ask_re@model$method
+
+ask_sim <- as(ask_re@model$sim, "matrix")
+write.csv(ask_sim, "./ask_sim.csv")  # 导出网站与网站的二元型矩阵
+
+# 利用模型对原始数据集进行预测并获得推荐长度为5的结果
+ask_p <- predict(ask_re, ask, n = 5) 
+recom3 <- bestN(ask_p, 3)
+as(recom3, "list")[1:5]  # 查看前五个用户的top5推荐
+
+# 将结果保存至工作目录下的文件中，需要将结果转换为list型。
+# 对list型结果采用sink与print命令将其保存
+sink("preask.txt")
+print(as(ask_p, "list"))
+sink()
+
+
